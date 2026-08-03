@@ -96,6 +96,28 @@ The server then exposes:
 **Order convention:** a **positive** quantity buys, a **negative** quantity sells (e.g. `-10.5`).
 Orders execute only in the account's main currency.
 
+## Rate limiting
+
+Every Trading 212 endpoint has its own limit and they apply **per account**, so a
+burst from this server counts against the same budget as anything else the
+account is doing. `ratelimit.py` holds the published limit for each endpoint and
+puts every outgoing call through a single queue: calls go out one at a time, in
+the order they arrived, and each waits out its own endpoint's window first.
+
+Consequences worth knowing:
+
+- A tool call can block for a while — `list_instruments` is 1 req / 50s, so a
+  second call to it waits nearly a minute. Nothing is dropped or rejected; it
+  waits its turn.
+- Because the queue is strictly in order, a slow call holds up the ones behind
+  it. Fine at this server's traffic; it is the trade-off that makes the
+  guarantee simple.
+- Waits happen on a worker thread, so the SSE transport and `/health` stay
+  responsive throughout.
+- A `429` that slips through anyway (another client on the same account) holds
+  that endpoint back for the interval in `Retry-After` / `x-ratelimit-reset` and
+  is retried once.
+
 ## Development
 
 ```bash

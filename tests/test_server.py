@@ -5,6 +5,7 @@ server.py, so an API break in the mcp package (handler signatures, result
 types, transport) would otherwise only surface at runtime.
 """
 
+import threading
 from unittest.mock import patch
 
 import mcp.types as types
@@ -40,6 +41,20 @@ class TestCallTool:
         with patch.object(tools, "dispatch", return_value={}) as disp:
             await server.call_tool(None, params)
         disp.assert_called_once_with("get_positions", {})
+
+    async def test_dispatch_runs_off_the_event_loop(self):
+        """Rate-limit waits are blocking, so dispatch must not run on the loop."""
+        loop_thread = threading.get_ident()
+        seen = {}
+
+        def spy(name, args):
+            seen["thread"] = threading.get_ident()
+            return {}
+
+        params = types.CallToolRequestParams(name="get_positions", arguments={})
+        with patch.object(tools, "dispatch", spy):
+            await server.call_tool(None, params)
+        assert seen["thread"] != loop_thread
 
     async def test_unknown_tool_is_error(self):
         params = types.CallToolRequestParams(name="nope", arguments={})

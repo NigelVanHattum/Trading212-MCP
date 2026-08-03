@@ -12,9 +12,11 @@ Configuration:
   TRADING212_LIVE env vars. See client.py for details.
 """
 
+import functools
 import json
 import os
 
+import anyio.to_thread
 import httpx
 import mcp.types as types
 import uvicorn
@@ -44,7 +46,12 @@ async def call_tool(
     params: types.CallToolRequestParams,
 ) -> types.CallToolResult:
     try:
-        result = tools.dispatch(params.name, params.arguments or {})
+        # dispatch() is blocking and may sit in the rate limiter's queue for a
+        # while, so keep it off the event loop and out of the way of other SSE
+        # sessions.
+        result = await anyio.to_thread.run_sync(
+            functools.partial(tools.dispatch, params.name, params.arguments or {})
+        )
         text = json.dumps(result, indent=2)
         is_error = False
     except httpx.HTTPStatusError as e:
