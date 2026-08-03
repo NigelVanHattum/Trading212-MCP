@@ -96,6 +96,29 @@ The server then exposes:
 **Order convention:** a **positive** quantity buys, a **negative** quantity sells (e.g. `-10.5`).
 Orders execute only in the account's main currency.
 
+### Searching instruments
+
+The upstream `/metadata/instruments` endpoint takes no parameters — it returns
+the entire catalogue (~15k instruments, several MB), which is not something to
+hand an agent. `list_instruments` fetches that list once, caches it for 10
+minutes, and searches it locally:
+
+| Argument | Match |
+|---|---|
+| `trading212Id` | Trading 212 instrument ID, e.g. `AAPL_US_EQ`. Exact, prefix (`AAPL`) or substring, ranked in that order |
+| `isin` | Exact, case-insensitive |
+| `name` | Case-insensitive substring |
+| `type` | One of `STOCK`, `ETF`, `CRYPTOCURRENCY`, … |
+| `limit` | Result cap (default 20, max 100) |
+
+Filters combine with AND. Responses carry `total` (all matches), `returned`,
+`limit` and `truncated`, so a search that is too broad reports how much it left
+out instead of silently dropping it.
+
+`trading212Id` is the API's `ticker` field — the value the order tools take as
+their `ticker` argument. It is named separately here because it is a Trading 212
+identifier (`AAPL_US_EQ`), not a market ticker (`AAPL`).
+
 ## Rate limiting
 
 Every Trading 212 endpoint has its own limit and they apply **per account**, so a
