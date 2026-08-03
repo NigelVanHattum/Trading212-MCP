@@ -25,10 +25,13 @@ Environment variables:
 import base64
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
 import httpx
+
+import ratelimit
 
 
 def _as_bool(value: Any) -> bool:
@@ -66,6 +69,11 @@ BASE_URL = (
 )
 
 
+# Shared by every tool call: one queue for the whole process, because the API
+# applies its limits per account rather than per connection.
+limiter = ratelimit.RateLimiter()
+
+
 def _auth_header() -> str:
     """Build the Authorization header value (HTTP Basic auth)."""
     raw = f"{API_KEY}:{API_SECRET}".encode()
@@ -84,11 +92,44 @@ def _make_client() -> httpx.Client:
     )
 
 
+def _retry_after(response: httpx.Response, fallback: float) -> float:
+    """Seconds to wait after a 429, from the response headers."""
+    try:
+        headers = response.headers
+        retry_after = headers.get("retry-after")
+        if retry_after is not None:
+            return max(0.0, float(retry_after))
+
+        reset = headers.get("x-ratelimit-reset")
+        if reset is not None:
+            # Unix timestamp of the moment the window clears.
+            return max(0.0, float(reset) - time.time())
+    except (AttributeError, TypeError, ValueError):
+        pass
+    return fallback
+
+
 def api(method: str, path: str, params: dict | None = None, body: dict | None = None) -> Any:
-    """Execute an API request and return parsed JSON (or {"status": "success"} for empty responses)."""
+    """Execute an API request and return parsed JSON (or {"status": "success"} for empty responses).
+
+    Calls are queued by the rate limiter and go out one at a time, in order, so
+    the account's per-endpoint limits are never exceeded. A 429 slipping
+    through anyway (another client sharing the account, say) holds the endpoint
+    back and is retried once.
+    """
     clean_params = {k: v for k, v in (params or {}).items() if v is not None} or None
-    with _make_client() as client:
-        r = client.request(method=method, url=path, params=clean_params, json=body)
+
+    for attempt in (1, 2):
+        limiter.acquire(method, path)
+        with _make_client() as client:
+            r = client.request(method=method, url=path, params=clean_params, json=body)
+
+        if r.status_code == 429 and attempt == 1:
+            # Fall back to the endpoint's own period when the response says nothing.
+            _, period = limiter.limit_for(ratelimit.route_key(method, path))
+            limiter.penalize(method, path, _retry_after(r, period))
+            continue
+
         r.raise_for_status()
         return r.json() if r.content else {"status": "success"}
 

@@ -96,6 +96,51 @@ The server then exposes:
 **Order convention:** a **positive** quantity buys, a **negative** quantity sells (e.g. `-10.5`).
 Orders execute only in the account's main currency.
 
+### Searching instruments
+
+The upstream `/metadata/instruments` endpoint takes no parameters — it returns
+the entire catalogue (~15k instruments, several MB), which is not something to
+hand an agent. `list_instruments` fetches that list once, caches it for 10
+minutes, and searches it locally:
+
+| Argument | Match |
+|---|---|
+| `trading212Id` | Trading 212 instrument ID, e.g. `AAPL_US_EQ`. Exact, prefix (`AAPL`) or substring, ranked in that order |
+| `isin` | Exact, case-insensitive |
+| `name` | Case-insensitive substring |
+| `type` | One of `STOCK`, `ETF`, `CRYPTOCURRENCY`, … |
+| `limit` | Result cap (default 20, max 100) |
+
+Filters combine with AND. Responses carry `total` (all matches), `returned`,
+`limit` and `truncated`, so a search that is too broad reports how much it left
+out instead of silently dropping it.
+
+`trading212Id` is the API's `ticker` field — the value the order tools take as
+their `ticker` argument. It is named separately here because it is a Trading 212
+identifier (`AAPL_US_EQ`), not a market ticker (`AAPL`).
+
+## Rate limiting
+
+Every Trading 212 endpoint has its own limit and they apply **per account**, so a
+burst from this server counts against the same budget as anything else the
+account is doing. `ratelimit.py` holds the published limit for each endpoint and
+puts every outgoing call through a single queue: calls go out one at a time, in
+the order they arrived, and each waits out its own endpoint's window first.
+
+Consequences worth knowing:
+
+- A tool call can block for a while — `list_instruments` is 1 req / 50s, so a
+  second call to it waits nearly a minute. Nothing is dropped or rejected; it
+  waits its turn.
+- Because the queue is strictly in order, a slow call holds up the ones behind
+  it. Fine at this server's traffic; it is the trade-off that makes the
+  guarantee simple.
+- Waits happen on a worker thread, so the SSE transport and `/health` stay
+  responsive throughout.
+- A `429` that slips through anyway (another client on the same account) holds
+  that endpoint back for the interval in `Retry-After` / `x-ratelimit-reset` and
+  is retried once.
+
 ## Development
 
 ```bash

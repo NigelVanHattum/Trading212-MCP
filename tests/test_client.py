@@ -2,6 +2,7 @@
 
 import base64
 import importlib
+import time
 
 import pytest
 import httpx
@@ -149,3 +150,82 @@ class TestApi:
             req.return_value = mock_resp
             client.api("GET", "/equity/history/orders", params={"cursor": None})
         assert req.call_args.kwargs["params"] is None
+
+
+# ---------------------------------------------------------------------------
+# api() rate limiting
+# ---------------------------------------------------------------------------
+
+def _headers(**kwargs):
+    """Real header mapping — MagicMock's default .get() would hide parsing bugs."""
+    return httpx.Headers({k.replace("_", "-"): v for k, v in kwargs.items()})
+
+
+class TestApiRateLimiting:
+    def test_acquires_before_the_request(self):
+        mock_resp = _mock_response(json_data={}, content=b"{}")
+        with patch("client._make_client") as mk, patch.object(client, "limiter") as lim:
+            mk.return_value.__enter__.return_value.request.return_value = mock_resp
+            client.api("GET", "/equity/positions")
+        lim.acquire.assert_called_once_with("GET", "/equity/positions")
+
+    def test_retries_once_after_429(self):
+        throttled = _mock_response(status=429)
+        throttled.headers = _headers(retry_after="7")
+        ok = _mock_response(json_data={"ok": True}, content=b'{"ok":true}')
+
+        with patch("client._make_client") as mk, patch.object(client, "limiter") as lim:
+            lim.limit_for.return_value = (1, 5)
+            req = mk.return_value.__enter__.return_value.request
+            req.side_effect = [throttled, ok]
+            assert client.api("GET", "/equity/positions") == {"ok": True}
+
+        assert req.call_count == 2
+        lim.penalize.assert_called_once_with("GET", "/equity/positions", 7.0)
+        assert lim.acquire.call_count == 2
+
+    def test_second_429_is_raised(self):
+        throttled = _mock_response(status=429)
+        throttled.headers = _headers(retry_after="1")
+        throttled.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Too Many Requests", request=MagicMock(), response=throttled
+        )
+        with patch("client._make_client") as mk, patch.object(client, "limiter") as lim:
+            lim.limit_for.return_value = (1, 5)
+            mk.return_value.__enter__.return_value.request.return_value = throttled
+            with pytest.raises(httpx.HTTPStatusError):
+                client.api("GET", "/equity/positions")
+
+    def test_no_penalty_on_success(self):
+        mock_resp = _mock_response(json_data={}, content=b"{}")
+        with patch("client._make_client") as mk, patch.object(client, "limiter") as lim:
+            mk.return_value.__enter__.return_value.request.return_value = mock_resp
+            client.api("GET", "/equity/positions")
+        lim.penalize.assert_not_called()
+
+
+class TestRetryAfter:
+    def test_prefers_retry_after_header(self):
+        resp = _mock_response(status=429)
+        resp.headers = _headers(retry_after="12", x_ratelimit_reset="99999999999")
+        assert client._retry_after(resp, fallback=5) == 12.0
+
+    def test_falls_back_to_ratelimit_reset(self):
+        resp = _mock_response(status=429)
+        resp.headers = _headers(x_ratelimit_reset=str(int(time.time()) + 30))
+        assert 28 <= client._retry_after(resp, fallback=5) <= 30
+
+    def test_reset_in_the_past_is_zero(self):
+        resp = _mock_response(status=429)
+        resp.headers = _headers(x_ratelimit_reset="1")
+        assert client._retry_after(resp, fallback=5) == 0.0
+
+    def test_unparseable_header_uses_fallback(self):
+        resp = _mock_response(status=429)
+        resp.headers = _headers(retry_after="soon")
+        assert client._retry_after(resp, fallback=5) == 5
+
+    def test_no_headers_uses_fallback(self):
+        resp = _mock_response(status=429)
+        resp.headers = _headers()
+        assert client._retry_after(resp, fallback=5) == 5

@@ -83,10 +83,17 @@ class TestDispatchRouting:
             tools.dispatch("cancel_order", {"id": 42})
             m.assert_called_once_with("DELETE", "/equity/orders/42")
 
-    def test_list_instruments_params(self):
+    def test_list_instruments_fetches_the_whole_catalogue(self):
+        """The endpoint takes no parameters — filtering happens client-side."""
+        with patch("tools.instruments.api", return_value=[]) as m:
+            instruments._cache.update(fetched_at=0.0, items=None)
+            tools.dispatch("list_instruments", {"trading212Id": "AAPL"})
+            m.assert_called_once_with("GET", "/equity/metadata/instruments")
+
+    def test_list_exchanges_takes_no_params(self):
         with patch("tools.instruments.api") as m:
-            tools.dispatch("list_instruments", {"limit": 50, "cursor": None})
-            m.assert_called_once_with("GET", "/equity/metadata/instruments", params={"limit": 50})
+            tools.dispatch("list_exchanges", {})
+            m.assert_called_once_with("GET", "/equity/metadata/exchanges")
 
     def test_request_export_builds_data_included(self):
         with patch("tools.history.api") as m:
