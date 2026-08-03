@@ -20,7 +20,7 @@ TOOLS = [
             "List all accessible exchanges and their working schedules. "
             "Rate limit 1 req/30s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "limit":  {"type": "integer", "description": "Page size (default 20, max 50)"},
@@ -34,7 +34,7 @@ TOOLS = [
             "List all tradable instruments and their details (ticker, name, type, "
             "currencyCode, isin). Tickers look like 'AAPL_US_EQ'. Rate limit 1 req/50s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "limit":  {"type": "integer", "description": "Page size (default 20, max 50)"},

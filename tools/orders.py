@@ -22,7 +22,7 @@ TOOLS = [
     types.Tool(
         name="list_orders",
         description="List all active (pending) orders. Rate limit 1 req/5s.",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {},
         },
@@ -30,7 +30,7 @@ TOOLS = [
     types.Tool(
         name="get_order",
         description="Get a specific pending order by its ID. Rate limit 1 req/1s.",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "id": {"type": "integer", "description": "Order ID"},
@@ -41,7 +41,7 @@ TOOLS = [
     types.Tool(
         name="cancel_order",
         description="Cancel a pending order by its ID. Rate limit 50 req/min.",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "id": {"type": "integer", "description": "Order ID"},
@@ -55,7 +55,7 @@ TOOLS = [
             "Place a market order for immediate execution. Positive quantity buys, "
             "negative sells. Subject to price slippage. Rate limit 50 req/min."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "ticker":        {"type": "string",  "description": "Instrument ticker, e.g. AAPL_US_EQ"},
@@ -71,7 +71,7 @@ TOOLS = [
             "Place a limit order that executes at limitPrice or better. Positive "
             "quantity buys, negative sells. Rate limit 1 req/2s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "ticker":       {"type": "string", "description": "Instrument ticker, e.g. AAPL_US_EQ"},
@@ -88,7 +88,7 @@ TOOLS = [
             "Place a stop order, triggered into a market order when the Last Traded "
             "Price reaches stopPrice. Rate limit 1 req/2s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "ticker":       {"type": "string", "description": "Instrument ticker, e.g. AAPL_US_EQ"},
@@ -105,7 +105,7 @@ TOOLS = [
             "Place a stop-limit order: triggers at stopPrice, then places a limit "
             "order at limitPrice. Rate limit 1 req/2s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "ticker":       {"type": "string", "description": "Instrument ticker, e.g. AAPL_US_EQ"},
