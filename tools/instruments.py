@@ -16,6 +16,7 @@ The upstream data refreshes roughly every 10 minutes and the endpoint allows
 queueing behind that limit.
 """
 
+import re
 import threading
 import time
 from typing import Any
@@ -68,11 +69,11 @@ TOOLS = [
                 },
                 "isin": {
                     "type": "string",
-                    "description": "ISIN, e.g. 'US0378331005'. Exact match, case-insensitive.",
+                    "description": "ISIN, e.g. 'US0378331005'. Exact match; case and spacing are ignored.",
                 },
                 "name": {
                     "type": "string",
-                    "description": "Instrument name, e.g. 'Apple'. Case-insensitive substring match.",
+                    "description": "Instrument name, e.g. 'Coca Cola'. Case-insensitive; punctuation is ignored and every word must appear, in any order.",
                 },
                 "type": {
                     "type": "string",
@@ -109,6 +110,30 @@ def _all_instruments() -> list[dict]:
         return _cache["items"]
 
 
+_NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]+")
+
+
+def _normalise(text: str) -> str:
+    """Lowercase, and reduce punctuation to single spaces.
+
+    Instrument names carry punctuation an agent will not reproduce: the
+    catalogue says 'Coca-Cola', a caller searches 'coca cola'. Normalising both
+    sides makes the two the same string.
+    """
+    return _NON_ALPHANUMERIC.sub(" ", (text or "").lower()).strip()
+
+
+def _bare(text: str) -> str:
+    """Strip everything but letters and digits — for identifiers like ISINs."""
+    return _NON_ALPHANUMERIC.sub("", (text or "").lower()).upper()
+
+
+def _name_matches(name: str, query: str) -> bool:
+    """True when every word of the query appears in the name, in any order."""
+    haystack = _normalise(name)
+    return all(token in haystack for token in query.split())
+
+
 def _id_rank(instrument_id: str, query: str) -> int | None:
     """0 exact, 1 prefix, 2 substring, None for no match."""
     instrument_id = (instrument_id or "").upper()
@@ -133,8 +158,8 @@ def search(
     limit = max(1, min(int(limit), MAX_LIMIT))
 
     query_id = (trading212_id or "").strip().upper()
-    query_isin = (isin or "").strip().upper()
-    query_name = (name or "").strip().lower()
+    query_isin = _bare(isin or "")
+    query_name = _normalise(name or "")
     query_type = (type_ or "").strip().upper()
 
     ranked: list[tuple[int, dict]] = []
@@ -147,10 +172,10 @@ def search(
                 continue
             rank = id_rank
 
-        if query_isin and (item.get("isin") or "").upper() != query_isin:
+        if query_isin and _bare(item.get("isin", "")) != query_isin:
             continue
 
-        if query_name and query_name not in (item.get("name") or "").lower():
+        if query_name and not _name_matches(item.get("name", ""), query_name):
             continue
 
         if query_type and (item.get("type") or "").upper() != query_type:

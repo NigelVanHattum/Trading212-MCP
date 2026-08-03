@@ -90,6 +90,40 @@ class TestSearchByField:
         assert instruments.search([{"ticker": "X_EQ"}], name="apple")["total"] == 0
 
 
+class TestNamePunctuation:
+    """The catalogue writes 'Coca-Cola'; callers type 'coca cola'."""
+
+    HYPHENATED = [
+        {"ticker": "KO_US_EQ",   "name": "Coca-Cola",                      "isin": "US1912161007", "type": "STOCK"},
+        {"ticker": "CCEP_US_EQ", "name": "Coca-Cola Europacific Partners", "isin": "GB00BDCPN049", "type": "STOCK"},
+        {"ticker": "PEP_US_EQ",  "name": "PepsiCo, Inc.",                  "isin": "US7134481081", "type": "STOCK"},
+        {"ticker": "BRKB_US_EQ", "name": "Berkshire Hathaway (Class B)",   "isin": "US0846707026", "type": "STOCK"},
+    ]
+
+    @pytest.mark.parametrize("query", ["coca cola", "Coca-Cola", "COCA COLA", "coca  cola"])
+    def test_hyphen_and_spacing_are_interchangeable(self, query):
+        assert instruments.search(self.HYPHENATED, name=query)["total"] == 2
+
+    def test_words_match_in_any_order(self):
+        result = instruments.search(self.HYPHENATED, name="europacific coca")
+        assert ids(result) == ["CCEP_US_EQ"]
+
+    def test_all_words_must_be_present(self):
+        assert instruments.search(self.HYPHENATED, name="coca pepsi")["total"] == 0
+
+    def test_trailing_punctuation_ignored(self):
+        assert ids(instruments.search(self.HYPHENATED, name="pepsico inc")) == ["PEP_US_EQ"]
+
+    def test_parentheses_ignored(self):
+        assert ids(instruments.search(self.HYPHENATED, name="berkshire class b")) == ["BRKB_US_EQ"]
+
+    def test_partial_words_still_match(self):
+        assert ids(instruments.search(self.HYPHENATED, name="pepsi")) == ["PEP_US_EQ"]
+
+    def test_isin_ignores_spacing_and_case(self):
+        assert ids(instruments.search(self.HYPHENATED, isin="us 1912161007")) == ["KO_US_EQ"]
+
+
 # ---------------------------------------------------------------------------
 # search() — combining and bounding
 # ---------------------------------------------------------------------------
