@@ -3,12 +3,12 @@ Account data
 
 Endpoints:
   GET /api/v0/equity/account/summary   — cash & investment metrics
-  GET /api/v0/equity/positions         — all open positions
+  GET /api/v0/equity/positions         — open positions, optionally one ticker
 """
 
 from typing import Any
 import mcp.types as types
-from client import api
+from client import api, omit
 
 TOOLS = [
     types.Tool(
@@ -25,12 +25,21 @@ TOOLS = [
     types.Tool(
         name="get_positions",
         description=(
-            "Fetch all open positions for the account, with quantity, average "
-            "price, current price and profit/loss. Rate limit 1 req/1s."
+            "Fetch open positions for the account, with quantity, average price, "
+            "current price and profit/loss. Pass a ticker to fetch a single "
+            "position instead of the whole portfolio. Rate limit 1 req/1s."
         ),
         input_schema={
             "type": "object",
-            "properties": {},
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": (
+                        "Optional Trading 212 instrument ID, e.g. AAPL_US_EQ. "
+                        "Omit to return every open position."
+                    ),
+                },
+            },
         },
     ),
 ]
@@ -43,4 +52,4 @@ def dispatch(name: str, a: dict) -> Any:
         return api("GET", "/equity/account/summary")
 
     elif name == "get_positions":
-        return api("GET", "/equity/positions")
+        return api("GET", "/equity/positions", params=omit(a))

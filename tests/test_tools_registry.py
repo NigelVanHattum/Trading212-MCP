@@ -68,7 +68,22 @@ class TestDispatchRouting:
     def test_get_positions(self):
         with patch("tools.account.api") as m:
             tools.dispatch("get_positions", {})
-            m.assert_called_once_with("GET", "/equity/positions")
+            m.assert_called_once_with("GET", "/equity/positions", params={})
+
+    def test_get_positions_filtered_by_ticker(self):
+        with patch("tools.account.api") as m:
+            tools.dispatch("get_positions", {"ticker": "AAPL_US_EQ"})
+            m.assert_called_once_with(
+                "GET", "/equity/positions", params={"ticker": "AAPL_US_EQ"}
+            )
+
+    def test_get_transactions_passes_time(self):
+        with patch("tools.history.api") as m:
+            tools.dispatch("get_transactions", {"time": "2024-01-01T00:00:00Z", "limit": 50})
+            m.assert_called_once_with(
+                "GET", "/equity/history/transactions",
+                params={"time": "2024-01-01T00:00:00Z", "limit": 50},
+            )
 
     def test_place_market_order_body(self):
         with patch("tools.orders.api") as m:
