@@ -15,9 +15,23 @@ from typing import Any
 import mcp.types as types
 from client import api, omit
 
-_PAGING = {
-    "limit":  {"type": "integer", "description": "Page size (default 20, max 50)"},
-    "cursor": {"type": "string",  "description": "Pagination cursor from a previous page"},
+_LIMIT = {"type": "integer", "description": "Page size (default 20, max 50)"}
+
+# The cursor type differs by endpoint: orders and dividends specify an integer,
+# transactions a string. Both are lifted from the previous page's nextPagePath.
+_PAGING_NUMERIC = {
+    "limit":  _LIMIT,
+    "cursor": {"type": "integer", "description": "Pagination cursor from the previous page's nextPagePath"},
+}
+
+_PAGING_OPAQUE = {
+    "limit":  _LIMIT,
+    "cursor": {"type": "string", "description": "Pagination cursor from the previous page's nextPagePath"},
+}
+
+_TICKER = {
+    "type": "string",
+    "description": "Optional Trading 212 instrument ID filter, e.g. AAPL_US_EQ",
 }
 
 TOOLS = [
@@ -27,8 +41,8 @@ TOOLS = [
         input_schema={
             "type": "object",
             "properties": {
-                **_PAGING,
-                "ticker": {"type": "string", "description": "Optional ticker filter, e.g. AAPL_US_EQ"},
+                **_PAGING_NUMERIC,
+                "ticker": _TICKER,
             },
         },
     ),
@@ -38,8 +52,8 @@ TOOLS = [
         input_schema={
             "type": "object",
             "properties": {
-                **_PAGING,
-                "ticker": {"type": "string", "description": "Optional ticker filter, e.g. AAPL_US_EQ"},
+                **_PAGING_NUMERIC,
+                "ticker": _TICKER,
             },
         },
     ),
@@ -51,7 +65,16 @@ TOOLS = [
         ),
         input_schema={
             "type": "object",
-            "properties": dict(_PAGING),
+            "properties": {
+                **_PAGING_OPAQUE,
+                "time": {
+                    "type": "string",
+                    "description": (
+                        "Return transactions from this moment onwards, ISO-8601 "
+                        "e.g. 2024-01-01T00:00:00Z"
+                    ),
+                },
+            },
         },
     ),
     types.Tool(
