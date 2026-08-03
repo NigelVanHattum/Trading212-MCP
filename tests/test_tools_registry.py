@@ -24,7 +24,7 @@ class TestRegistry:
     def test_all_tools_have_name_and_schema(self):
         for t in tools.ALL_TOOLS:
             assert t.name, "Tool missing name"
-            assert t.inputSchema, f"Tool {t.name} missing inputSchema"
+            assert t.input_schema, f"Tool {t.name} missing input_schema"
 
     def test_tool_names_sets_match_tools(self):
         for mod in [account, instruments, orders, history]:
@@ -37,7 +37,7 @@ class TestRegistry:
 
     @pytest.mark.parametrize("tool", tools.ALL_TOOLS)
     def test_required_fields_are_in_properties(self, tool):
-        schema = tool.inputSchema
+        schema = tool.input_schema
         required = schema.get("required", [])
         props = schema.get("properties", {})
         missing = [f for f in required if f not in props]

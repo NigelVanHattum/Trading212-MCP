@@ -24,7 +24,7 @@ TOOLS = [
     types.Tool(
         name="get_historical_orders",
         description="Access historical order records. Rate limit 6 req/min.",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 **_PAGING,
@@ -35,7 +35,7 @@ TOOLS = [
     types.Tool(
         name="get_dividends",
         description="Retrieve paid dividends. Rate limit 6 req/min.",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 **_PAGING,
@@ -49,7 +49,7 @@ TOOLS = [
             "Fetch cash movements to and from the account (deposits, withdrawals, "
             "fees). Rate limit 6 req/min."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": dict(_PAGING),
         },
@@ -57,7 +57,7 @@ TOOLS = [
     types.Tool(
         name="list_exports",
         description="List requested CSV reports and their generation status. Rate limit 1 req/min.",
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {},
         },
@@ -69,7 +69,7 @@ TOOLS = [
             "Asynchronous — returns a reportId; poll list_exports for the download "
             "link. Rate limit 1 req/30s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "timeFrom": {"type": "string", "description": "Start of window, ISO-8601 e.g. 2024-01-01T00:00:00Z"},

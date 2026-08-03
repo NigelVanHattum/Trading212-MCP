@@ -17,7 +17,7 @@ TOOLS = [
             "Get a breakdown of the account's cash and investment metrics "
             "(free funds, invested capital, current value, P/L). Rate limit 1 req/5s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {},
         },
@@ -28,7 +28,7 @@ TOOLS = [
             "Fetch all open positions for the account, with quantity, average "
             "price, current price and profit/loss. Rate limit 1 req/1s."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {},
         },
