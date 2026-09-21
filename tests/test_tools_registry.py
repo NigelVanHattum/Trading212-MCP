@@ -5,7 +5,7 @@ from collections import Counter
 from unittest.mock import patch
 
 import tools
-from tools import account, instruments, orders, history
+from tools import account, instruments, orders, history, pies
 
 
 # ---------------------------------------------------------------------------
@@ -14,7 +14,7 @@ from tools import account, instruments, orders, history
 
 class TestRegistry:
     def test_total_tool_count(self):
-        assert len(tools.ALL_TOOLS) == 16
+        assert len(tools.ALL_TOOLS) == 22
 
     def test_no_duplicate_names(self):
         names = [t.name for t in tools.ALL_TOOLS]
@@ -27,7 +27,7 @@ class TestRegistry:
             assert t.input_schema, f"Tool {t.name} missing input_schema"
 
     def test_tool_names_sets_match_tools(self):
-        for mod in [account, instruments, orders, history]:
+        for mod in [account, instruments, orders, history, pies]:
             declared = {t.name for t in mod.TOOLS}
             assert mod.TOOL_NAMES == declared, f"{mod.__name__}: TOOL_NAMES mismatch"
 
@@ -53,6 +53,7 @@ class TestModuleCounts:
     def test_instruments(self): assert len(instruments.TOOLS) == 2
     def test_orders(self):      assert len(orders.TOOLS) == 7
     def test_history(self):     assert len(history.TOOLS) == 5
+    def test_pies(self):        assert len(pies.TOOLS) == 6
 
 
 # ---------------------------------------------------------------------------
@@ -122,3 +123,39 @@ class TestDispatchRouting:
             assert body["timeFrom"] == "2024-01-01T00:00:00Z"
             assert body["dataIncluded"]["includeOrders"] is False
             assert body["dataIncluded"]["includeDividends"] is True
+
+    def test_list_pies(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("list_pies", {})
+            m.assert_called_once_with("GET", "/equity/pies")
+
+    def test_create_pie_with_name(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("create_pie", {"name": "My Portfolio", "initialAmountInvestmentCurrency": 5000})
+            m.assert_called_once_with(
+                "POST", "/equity/pies",
+                body={"name": "My Portfolio", "initialAmountInvestmentCurrency": 5000},
+            )
+
+    def test_get_pie_by_id(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("get_pie", {"id": "pie-123"})
+            m.assert_called_once_with("GET", "/equity/pies/pie-123")
+
+    def test_update_pie(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("update_pie", {"id": "pie-123", "name": "Updated PIE"})
+            m.assert_called_once_with(
+                "POST", "/equity/pies/pie-123",
+                body={"name": "Updated PIE"},
+            )
+
+    def test_delete_pie(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("delete_pie", {"id": "pie-123"})
+            m.assert_called_once_with("DELETE", "/equity/pies/pie-123")
+
+    def test_duplicate_pie(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("duplicate_pie", {"id": "pie-123"})
+            m.assert_called_once_with("POST", "/equity/pies/pie-123/duplicate", body={})

@@ -5,6 +5,7 @@ from . import (
     instruments,
     orders,
     history,
+    pies,
 )
 
 _MODULES = [
@@ -12,6 +13,7 @@ _MODULES = [
     instruments,
     orders,
     history,
+    pies,
 ]
 
 # Aggregated tool list for MCP registration
