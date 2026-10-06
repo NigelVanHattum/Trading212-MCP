@@ -71,7 +71,7 @@ class TestLimits:
         (("GET", "/equity/account/summary"), (1, 5)),
         (("GET", "/equity/metadata/instruments"), (1, 50)),
         (("POST", "/equity/orders/market"), (50, 60)),
-        (("GET", "/equity/history/orders"), (6, 60)),
+        (("GET", "/equity/history/orders"), (20, 60)),
     ])
     def test_documented_limits(self, key, expected):
         assert ratelimit.LIMITS[key] == expected

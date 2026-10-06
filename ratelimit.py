@@ -41,9 +41,9 @@ LIMITS: dict[tuple[str, str], tuple[int, float]] = {
     ("POST",   "/equity/orders/stop"):          (1, 2),
     ("POST",   "/equity/orders/stop_limit"):    (1, 2),
 
-    ("GET",    "/equity/history/orders"):       (6, 60),
-    ("GET",    "/equity/history/dividends"):    (6, 60),
-    ("GET",    "/equity/history/transactions"): (6, 60),
+    ("GET",    "/equity/history/orders"):       (20, 60),
+    ("GET",    "/equity/history/dividends"):    (20, 60),
+    ("GET",    "/equity/history/transactions"): (20, 60),
     ("GET",    "/equity/history/exports"):      (1, 60),
     ("POST",   "/equity/history/exports"):      (1, 30),
 
