@@ -129,33 +129,82 @@ class TestDispatchRouting:
             tools.dispatch("list_pies", {})
             m.assert_called_once_with("GET", "/equity/pies")
 
-    def test_create_pie_with_name(self):
+    def test_create_pie_full_body(self):
+        args = {
+            "name": "Tech",
+            "instrumentShares": {"AAPL_US_EQ": 0.5, "MSFT_US_EQ": 0.5},
+            "dividendCashAction": "REINVEST",
+            "goal": 10000,
+            "endDate": "2030-01-01T00:00:00Z",
+            "icon": "Unicorn",
+        }
         with patch("tools.pies.api") as m:
-            tools.dispatch("create_pie", {"name": "My Portfolio", "initialAmountInvestmentCurrency": 5000})
+            tools.dispatch("create_pie", dict(args))
+            m.assert_called_once_with("POST", "/equity/pies", body=args)
+
+    def test_create_pie_drops_unknown_and_none(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("create_pie", {
+                "name": "X", "instrumentShares": {"AAPL_US_EQ": 1},
+                "goal": None, "initialAmountInvestmentCurrency": 5000,
+            })
             m.assert_called_once_with(
                 "POST", "/equity/pies",
-                body={"name": "My Portfolio", "initialAmountInvestmentCurrency": 5000},
+                body={"name": "X", "instrumentShares": {"AAPL_US_EQ": 1}},
             )
+
+    def test_create_pie_schema_matches_spec(self):
+        schema = next(t for t in pies.TOOLS if t.name == "create_pie").input_schema
+        assert set(schema["properties"]) == {
+            "name", "instrumentShares", "dividendCashAction", "goal", "endDate", "icon"}
+        assert set(schema["required"]) == {"name", "instrumentShares"}
+        assert schema["properties"]["dividendCashAction"]["enum"] == ["REINVEST", "TO_ACCOUNT_CASH"]
 
     def test_get_pie_by_id(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("get_pie", {"id": "pie-123"})
-            m.assert_called_once_with("GET", "/equity/pies/pie-123")
+            tools.dispatch("get_pie", {"id": 123})
+            m.assert_called_once_with("GET", "/equity/pies/123")
 
     def test_update_pie(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("update_pie", {"id": "pie-123", "name": "Updated PIE"})
+            tools.dispatch("update_pie", {"id": 123, "name": "Updated", "goal": 500,
+                                          "instrumentShares": {"VUSA_EQ": 1}})
             m.assert_called_once_with(
-                "POST", "/equity/pies/pie-123",
-                body={"name": "Updated PIE"},
+                "POST", "/equity/pies/123",
+                body={"name": "Updated", "goal": 500, "instrumentShares": {"VUSA_EQ": 1}},
             )
+
+    def test_update_pie_does_not_mutate_args(self):
+        args = {"id": 123, "name": "N"}
+        with patch("tools.pies.api"):
+            tools.dispatch("update_pie", args)
+        assert args == {"id": 123, "name": "N"}
+
+    def test_update_pie_schema_matches_spec(self):
+        schema = next(t for t in pies.TOOLS if t.name == "update_pie").input_schema
+        assert set(schema["properties"]) == {
+            "id", "name", "instrumentShares", "dividendCashAction", "goal", "endDate", "icon"}
+        assert schema["required"] == ["id"]
+        assert schema["properties"]["goal"]["type"] == "number"
 
     def test_delete_pie(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("delete_pie", {"id": "pie-123"})
-            m.assert_called_once_with("DELETE", "/equity/pies/pie-123")
+            tools.dispatch("delete_pie", {"id": 123})
+            m.assert_called_once_with("DELETE", "/equity/pies/123")
 
     def test_duplicate_pie(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("duplicate_pie", {"id": "pie-123"})
-            m.assert_called_once_with("POST", "/equity/pies/pie-123/duplicate", body={})
+            tools.dispatch("duplicate_pie", {"id": 123})
+            m.assert_called_once_with("POST", "/equity/pies/123/duplicate", body={})
+
+    def test_duplicate_pie_with_name_icon(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("duplicate_pie", {"id": 123, "name": "Copy", "icon": "Star"})
+            m.assert_called_once_with(
+                "POST", "/equity/pies/123/duplicate", body={"name": "Copy", "icon": "Star"})
+
+    def test_pie_descriptions_mark_deprecated_and_rate_limits(self):
+        limits = {"list_pies": "1 req/30s"}
+        for t in pies.TOOLS:
+            assert "deprecated" in t.description.lower()
+            assert limits.get(t.name, "1 req/5s") in t.description
