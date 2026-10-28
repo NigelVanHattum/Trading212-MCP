@@ -129,12 +129,18 @@ class TestDispatchRouting:
             tools.dispatch("list_pies", {})
             m.assert_called_once_with("GET", "/equity/pies")
 
-    def test_create_pie_with_name(self):
+    def test_create_pie_with_name_and_allocation(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("create_pie", {"name": "My Portfolio", "initialAmountInvestmentCurrency": 5000})
+            tools.dispatch("create_pie", {
+                "name": "My Portfolio",
+                "instrumentShares": {"AAPL_US_EQ": 0.5, "MSFT_US_EQ": 0.5},
+            })
             m.assert_called_once_with(
                 "POST", "/equity/pies",
-                body={"name": "My Portfolio", "initialAmountInvestmentCurrency": 5000},
+                body={
+                    "name": "My Portfolio",
+                    "instrumentShares": {"AAPL_US_EQ": 0.5, "MSFT_US_EQ": 0.5},
+                },
             )
 
     def test_get_pie_by_id(self):
@@ -144,10 +150,14 @@ class TestDispatchRouting:
 
     def test_update_pie(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("update_pie", {"id": "pie-123", "name": "Updated PIE"})
+            tools.dispatch("update_pie", {
+                "id": "pie-123",
+                "name": "Updated PIE",
+                "instrumentShares": {"AAPL_US_EQ": 1.0},
+            })
             m.assert_called_once_with(
                 "POST", "/equity/pies/pie-123",
-                body={"name": "Updated PIE"},
+                body={"name": "Updated PIE", "instrumentShares": {"AAPL_US_EQ": 1.0}},
             )
 
     def test_delete_pie(self):
