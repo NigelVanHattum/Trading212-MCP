@@ -5,6 +5,7 @@ server.py, so an API break in the mcp package (handler signatures, result
 types, transport) would otherwise only surface at runtime.
 """
 
+import importlib.metadata
 import json
 import threading
 from unittest.mock import patch
@@ -130,7 +131,11 @@ class TestStatelessStreamableHttp:
             },
         )
         assert response.status_code == 200
-        assert _json_rpc(response)["result"]["serverInfo"]["name"] == "trading212"
+        info = _json_rpc(response)["result"]["serverInfo"]
+        assert info["name"] == "trading212"
+        # Read back from the installed package, so it cannot drift from pyproject.
+        assert info["version"] == importlib.metadata.version("trading212-mcp")
+        assert info["version"] != "0.0.0+unknown"
 
     def test_tools_call_without_initialize(self, client):
         with patch.object(tools, "dispatch", return_value={"ok": True}) as dispatch:
