@@ -12,6 +12,9 @@ Endpoints:
   DELETE /api/v0/equity/pies/{id}             — delete a PIE
   POST   /api/v0/equity/pies/{id}/duplicate   — duplicate a PIE
 
+The spec marks all six endpoints deprecated: they still work, and there is no
+replacement yet, but they will not be developed further.
+
 Create and update both take a PieRequest body whose fields all sit at the top
 level — instrumentShares above all, which the API rejects the request without.
 The allocation is a ticker -> fraction map and the fractions have to add up
@@ -22,6 +25,13 @@ the PIE with get_pie first and resend whatever you mean to keep.
 from typing import Any
 import mcp.types as types
 from client import api, omit
+
+# Appended to every tool below: the spec marks the whole Pies API deprecated,
+# which callers should know before they build on it.
+DEPRECATION_NOTE = (
+    " Note: Trading 212 has deprecated the Pies API — still operational, "
+    "no further updates."
+)
 
 # Allocations are usually percentages divided by 100, so leave room for the
 # rounding that comes out of that rather than demanding an exact 1.
@@ -66,7 +76,7 @@ TOOLS = [
         description=(
             "List all PIE portfolios in the account. Returns details for each PIE "
             "including name, allocation, and current value. Rate limit 1 req/30s."
-        ),
+        ) + DEPRECATION_NOTE,
         input_schema={
             "type": "object",
             "properties": {},
@@ -79,7 +89,7 @@ TOOLS = [
             "a ticker -> fraction map adding up to 1; the API rejects the request "
             "without it. Returns the newly created PIE object with its ID. "
             "Rate limit 1 req/5s."
-        ),
+        ) + DEPRECATION_NOTE,
         input_schema={
             "type": "object",
             "properties": dict(PIE_REQUEST_PROPERTIES),
@@ -91,7 +101,7 @@ TOOLS = [
         description=(
             "Get details of a specific PIE portfolio by ID. Returns allocation, "
             "composition, and performance metrics. Rate limit 1 req/5s."
-        ),
+        ) + DEPRECATION_NOTE,
         input_schema={
             "type": "object",
             "properties": {
@@ -112,7 +122,7 @@ TOOLS = [
             "rather than patching them, so read the PIE with get_pie first and "
             "resend the name, icon, dividendCashAction, goal and endDate you want "
             "to keep. Rate limit 1 req/5s."
-        ),
+        ) + DEPRECATION_NOTE,
         input_schema={
             "type": "object",
             "properties": {
@@ -130,7 +140,7 @@ TOOLS = [
         description=(
             "Delete a PIE portfolio from the account. The portfolio must be fully "
             "liquidated (no positions) before deletion. Rate limit 1 req/5s."
-        ),
+        ) + DEPRECATION_NOTE,
         input_schema={
             "type": "object",
             "properties": {
@@ -146,14 +156,23 @@ TOOLS = [
         name="duplicate_pie",
         description=(
             "Create a duplicate copy of an existing PIE portfolio with all its "
-            "allocations and settings. Rate limit 1 req/5s."
-        ),
+            "allocations and settings. Give the copy its own name and icon, or "
+            "leave them off to inherit the source's. Rate limit 1 req/5s."
+        ) + DEPRECATION_NOTE,
         input_schema={
             "type": "object",
             "properties": {
                 "id": {
                     "type": "string",
                     "description": "Source PIE portfolio ID to duplicate",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name for the copy; inherits the source's when left off",
+                },
+                "icon": {
+                    "type": "string",
+                    "description": "Icon for the copy; inherits the source's when left off",
                 },
             },
             "required": ["id"],
@@ -206,4 +225,6 @@ def dispatch(name: str, a: dict) -> Any:
         return api("DELETE", f"/equity/pies/{a['id']}")
 
     elif name == "duplicate_pie":
-        return api("POST", f"/equity/pies/{a['id']}/duplicate", body={})
+        # DuplicateBucketRequest takes name and icon, and nothing else.
+        body = omit({"name": a.get("name"), "icon": a.get("icon")})
+        return api("POST", f"/equity/pies/{a['id']}/duplicate", body=body)
