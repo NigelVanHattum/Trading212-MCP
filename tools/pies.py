@@ -33,6 +33,14 @@ DEPRECATION_NOTE = (
     "no further updates."
 )
 
+# The path parameter on every per-pie endpoint. int64 in the spec, and the
+# server does not validate arguments, so this is what tells a caller to send a
+# number rather than the string the tools used to ask for.
+PIE_ID = {
+    "type": "integer",
+    "description": "PIE portfolio ID (int64)",
+}
+
 # Allocations are usually percentages divided by 100, so leave room for the
 # rounding that comes out of that rather than demanding an exact 1.
 SHARE_SUM_TOLERANCE = 1e-6
@@ -105,10 +113,7 @@ TOOLS = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "PIE portfolio ID",
-                },
+                "id": dict(PIE_ID),
             },
             "required": ["id"],
         },
@@ -126,10 +131,7 @@ TOOLS = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "PIE portfolio ID",
-                },
+                "id": dict(PIE_ID),
                 **PIE_REQUEST_PROPERTIES,
             },
             "required": ["id", "instrumentShares"],
@@ -144,10 +146,7 @@ TOOLS = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "PIE portfolio ID to delete",
-                },
+                "id": PIE_ID | {"description": "PIE portfolio ID to delete (int64)"},
             },
             "required": ["id"],
         },
@@ -162,10 +161,7 @@ TOOLS = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "Source PIE portfolio ID to duplicate",
-                },
+                "id": PIE_ID | {"description": "Source PIE portfolio ID to duplicate (int64)"},
                 "name": {
                     "type": "string",
                     "description": "Name for the copy; inherits the source's when left off",

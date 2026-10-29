@@ -80,14 +80,14 @@ HALF_AND_HALF = {"AAPL_US_EQ": 0.5, "MSFT_US_EQ": 0.5}
 class TestUpdateBody:
     def test_allocation_goes_to_the_top_level(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("update_pie", {"id": "10171983", "instrumentShares": HALF_AND_HALF})
+            tools.dispatch("update_pie", {"id": 10171983, "instrumentShares": HALF_AND_HALF})
             body = m.call_args.kwargs["body"]
             assert body == {"instrumentShares": HALF_AND_HALF}
 
     def test_every_field_goes_to_the_top_level(self):
         with patch("tools.pies.api") as m:
             tools.dispatch("update_pie", {
-                "id": "10171983",
+                "id": 10171983,
                 "name": "Fundamental Pie",
                 "instrumentShares": HALF_AND_HALF,
                 "icon": "Fire",
@@ -109,22 +109,22 @@ class TestUpdateBody:
 
     def test_the_id_stays_in_the_path(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("update_pie", {"id": "10171983", "instrumentShares": HALF_AND_HALF})
+            tools.dispatch("update_pie", {"id": 10171983, "instrumentShares": HALF_AND_HALF})
             args, kwargs = m.call_args
             assert args == ("POST", "/equity/pies/10171983")
             assert "id" not in kwargs["body"]
 
     def test_the_arguments_are_left_alone(self):
         """Dispatch reads the id out of the body rather than popping it."""
-        a = {"id": "10171983", "instrumentShares": HALF_AND_HALF}
+        a = {"id": 10171983, "instrumentShares": HALF_AND_HALF}
         with patch("tools.pies.api"):
             tools.dispatch("update_pie", a)
-        assert a["id"] == "10171983"
+        assert a["id"] == 10171983
 
     def test_unset_fields_are_dropped(self):
         with patch("tools.pies.api") as m:
             tools.dispatch("update_pie", {
-                "id": "10171983",
+                "id": 10171983,
                 "instrumentShares": HALF_AND_HALF,
                 "icon": None,
                 "goal": None,
@@ -163,7 +163,7 @@ class TestCreateBody:
 class TestAllocationChecks:
     @pytest.mark.parametrize("tool_name,args", [
         ("create_pie", {"name": "Fundamental Pie"}),
-        ("update_pie", {"id": "10171983", "name": "Fundamental Pie"}),
+        ("update_pie", {"id": 10171983, "name": "Fundamental Pie"}),
     ])
     def test_missing_allocation_is_refused(self, tool_name, args):
         with patch("tools.pies.api") as m:
@@ -174,12 +174,12 @@ class TestAllocationChecks:
     @pytest.mark.parametrize("shares", [{}, [], "AAPL_US_EQ", None])
     def test_an_allocation_that_is_not_a_map_is_refused(self, shares):
         with pytest.raises(ValueError, match="instrumentShares is required"):
-            tools.dispatch("update_pie", {"id": "10171983", "instrumentShares": shares})
+            tools.dispatch("update_pie", {"id": 10171983, "instrumentShares": shares})
 
     def test_an_allocation_that_does_not_add_up_is_refused(self):
         with pytest.raises(ValueError, match="must sum to 1"):
             tools.dispatch("update_pie", {
-                "id": "10171983",
+                "id": 10171983,
                 "instrumentShares": {"AAPL_US_EQ": 0.5, "MSFT_US_EQ": 0.3},
             })
 
@@ -187,24 +187,24 @@ class TestAllocationChecks:
     def test_a_share_that_is_not_a_positive_number_is_refused(self, value):
         with pytest.raises(ValueError, match="positive numbers"):
             tools.dispatch("update_pie", {
-                "id": "10171983",
+                "id": 10171983,
                 "instrumentShares": {"AAPL_US_EQ": value, "MSFT_US_EQ": 0.5},
             })
 
     def test_rounding_from_thirds_is_accepted(self):
         thirds = {"A_US_EQ": 0.333333, "B_US_EQ": 0.333333, "C_US_EQ": 0.333334}
         with patch("tools.pies.api") as m:
-            tools.dispatch("update_pie", {"id": "10171983", "instrumentShares": thirds})
+            tools.dispatch("update_pie", {"id": 10171983, "instrumentShares": thirds})
         m.assert_called_once()
 
     def test_a_single_instrument_at_full_weight_is_accepted(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("update_pie", {"id": "10171983", "instrumentShares": {"AAPL_US_EQ": 1}})
+            tools.dispatch("update_pie", {"id": 10171983, "instrumentShares": {"AAPL_US_EQ": 1}})
         m.assert_called_once()
 
     def test_reads_are_not_checked(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("get_pie", {"id": "10171983"})
+            tools.dispatch("get_pie", {"id": 10171983})
         m.assert_called_once_with("GET", "/equity/pies/10171983")
 
 
@@ -216,7 +216,7 @@ class TestDuplicate:
     def test_the_copy_can_be_named(self):
         with patch("tools.pies.api") as m:
             tools.dispatch("duplicate_pie", {
-                "id": "10171983", "name": "Fundamental Pie v2", "icon": "Fire",
+                "id": 10171983, "name": "Fundamental Pie v2", "icon": "Fire",
             })
             m.assert_called_once_with(
                 "POST", "/equity/pies/10171983/duplicate",
@@ -226,13 +226,13 @@ class TestDuplicate:
     def test_an_unnamed_copy_sends_an_empty_body(self):
         """Inherits the source's name and icon."""
         with patch("tools.pies.api") as m:
-            tools.dispatch("duplicate_pie", {"id": "10171983"})
+            tools.dispatch("duplicate_pie", {"id": 10171983})
             m.assert_called_once_with("POST", "/equity/pies/10171983/duplicate", body={})
 
     def test_nothing_else_is_forwarded(self):
         with patch("tools.pies.api") as m:
             tools.dispatch("duplicate_pie", {
-                "id": "10171983",
+                "id": 10171983,
                 "name": "Fundamental Pie v2",
                 "instrumentShares": {"AAPL_US_EQ": 1.0},
                 "goal": 25000,

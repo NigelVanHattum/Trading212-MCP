@@ -49,6 +49,20 @@ class TestCursorTypes:
         assert props["cursor"]["type"] == "string"
 
 
+class TestPieIdIsNumeric:
+    """Every per-pie endpoint takes the id as int64, not a string.
+
+    The server validates nothing against these schemas, so the type is the only
+    thing telling a caller what to send.
+    """
+
+    @pytest.mark.parametrize(
+        "tool_name", ["get_pie", "update_pie", "delete_pie", "duplicate_pie"]
+    )
+    def test_id_is_an_integer(self, tool_name):
+        assert TOOLS_BY_NAME[tool_name].input_schema["properties"]["id"]["type"] == "integer"
+
+
 class TestPositionsFilter:
     def test_ticker_is_optional(self):
         schema = TOOLS_BY_NAME["get_positions"].input_schema
