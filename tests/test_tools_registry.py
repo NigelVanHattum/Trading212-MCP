@@ -145,27 +145,27 @@ class TestDispatchRouting:
 
     def test_get_pie_by_id(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("get_pie", {"id": "pie-123"})
-            m.assert_called_once_with("GET", "/equity/pies/pie-123")
+            tools.dispatch("get_pie", {"id": 123})
+            m.assert_called_once_with("GET", "/equity/pies/123")
 
     def test_update_pie(self):
         with patch("tools.pies.api") as m:
             tools.dispatch("update_pie", {
-                "id": "pie-123",
+                "id": 123,
                 "name": "Updated PIE",
                 "instrumentShares": {"AAPL_US_EQ": 1.0},
             })
             m.assert_called_once_with(
-                "POST", "/equity/pies/pie-123",
+                "POST", "/equity/pies/123",
                 body={"name": "Updated PIE", "instrumentShares": {"AAPL_US_EQ": 1.0}},
             )
 
     def test_delete_pie(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("delete_pie", {"id": "pie-123"})
-            m.assert_called_once_with("DELETE", "/equity/pies/pie-123")
+            tools.dispatch("delete_pie", {"id": 123})
+            m.assert_called_once_with("DELETE", "/equity/pies/123")
 
     def test_duplicate_pie(self):
         with patch("tools.pies.api") as m:
-            tools.dispatch("duplicate_pie", {"id": "pie-123"})
-            m.assert_called_once_with("POST", "/equity/pies/pie-123/duplicate", body={})
+            tools.dispatch("duplicate_pie", {"id": 123})
+            m.assert_called_once_with("POST", "/equity/pies/123/duplicate", body={})
