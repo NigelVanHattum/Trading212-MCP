@@ -206,3 +206,51 @@ class TestAllocationChecks:
         with patch("tools.pies.api") as m:
             tools.dispatch("get_pie", {"id": "10171983"})
         m.assert_called_once_with("GET", "/equity/pies/10171983")
+
+
+# ---------------------------------------------------------------------------
+# Duplication — DuplicateBucketRequest is {name, icon}
+# ---------------------------------------------------------------------------
+
+class TestDuplicate:
+    def test_the_copy_can_be_named(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("duplicate_pie", {
+                "id": "10171983", "name": "Fundamental Pie v2", "icon": "Fire",
+            })
+            m.assert_called_once_with(
+                "POST", "/equity/pies/10171983/duplicate",
+                body={"name": "Fundamental Pie v2", "icon": "Fire"},
+            )
+
+    def test_an_unnamed_copy_sends_an_empty_body(self):
+        """Inherits the source's name and icon."""
+        with patch("tools.pies.api") as m:
+            tools.dispatch("duplicate_pie", {"id": "10171983"})
+            m.assert_called_once_with("POST", "/equity/pies/10171983/duplicate", body={})
+
+    def test_nothing_else_is_forwarded(self):
+        with patch("tools.pies.api") as m:
+            tools.dispatch("duplicate_pie", {
+                "id": "10171983",
+                "name": "Fundamental Pie v2",
+                "instrumentShares": {"AAPL_US_EQ": 1.0},
+                "goal": 25000,
+            })
+            assert m.call_args.kwargs["body"] == {"name": "Fundamental Pie v2"}
+
+    def test_the_schema_offers_both_and_requires_neither(self):
+        schema = TOOLS_BY_NAME["duplicate_pie"].input_schema
+        assert set(schema["properties"]) == {"id", "name", "icon"}
+        assert schema["required"] == ["id"]
+
+
+# ---------------------------------------------------------------------------
+# Upstream deprecation
+# ---------------------------------------------------------------------------
+
+class TestDeprecationNote:
+    @pytest.mark.parametrize("tool", pies.TOOLS, ids=lambda t: t.name)
+    def test_every_pie_tool_says_so(self, tool):
+        """The spec marks all six endpoints deprecated."""
+        assert tool.description.endswith(pies.DEPRECATION_NOTE)
