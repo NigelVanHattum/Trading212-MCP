@@ -1,6 +1,6 @@
 [project]
 name = "trading212-mcp"
-version = "1.1.0"
+version = "1.2.0"
 description = "MCP server for the Trading 212 Public API — Docker-hosted, stateless Streamable HTTP and SSE"
 requires-python = ">=3.11"
 dependencies = [

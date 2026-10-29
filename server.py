@@ -16,6 +16,7 @@ Configuration:
 import functools
 import json
 import os
+from importlib.metadata import PackageNotFoundError, version as package_version
 
 import anyio.to_thread
 import httpx
@@ -67,9 +68,16 @@ async def call_tool(
     )
 
 
+try:
+    VERSION = package_version("trading212-mcp")
+except PackageNotFoundError:
+    # Running from a checkout that was never installed.
+    VERSION = "0.0.0+unknown"
+
+
 mcp_server = Server(
     "trading212",
-    version="1.0.0",
+    version=VERSION,
     on_list_tools=list_tools,
     on_call_tool=call_tool,
 )
